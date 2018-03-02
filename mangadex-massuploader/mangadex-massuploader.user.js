@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MangaDex Mass Uploader
 // @namespace    Teasday
-// @version      1.0
+// @version      1.1
 // @license      GNU GPLv3
 // @description  Upload en mass
 // @author       Teasday
@@ -22,6 +22,7 @@
   const regexDefaultVolume  = /.*v[^\d]*?(\.?\d+(?:\.\d+)*[a-zA-Z]?\d*)/i
   const regexDefaultChapter = /.*c[^\d]*?(\.?\d+(?:\.\d+)*[a-zA-Z]?\d*)/i
   const regexDefaultGroup = /.*(?:\[([^\]]+)\].*)/i
+  const regexZeroPad = /^0+(?=\d)/
 
   const mangaId = $('#manga_id').val()
   const langPicker = $('#lang_id')
@@ -194,8 +195,8 @@
   class Chapter {
     constructor(file) {
       this.file = file
-      this.volume = getRegexResult(regexVolume, file.name).replace(/^0+/, '')
-      this.chapter = getRegexResult(regexChapter, file.name).replace(/^0+/, '')
+      this.volume = getRegexResult(regexVolume, file.name).replace(regexZeroPad, '')
+      this.chapter = getRegexResult(regexChapter, file.name).replace(regexZeroPad, '')
       this.chapterName = titleMap.get(this.chapter) || ''
       this.groupName = getRegexResult(regexGroup, file.name) || inputFallbackGroup.val()
       this.makeRow()

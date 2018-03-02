@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MangaDex Mass Uploader
 // @namespace    Teasday
-// @version      1.0
+// @version      1.1
 // @license      GNU GPLv3
 // @description  Upload en mass
 // @author       Teasday
