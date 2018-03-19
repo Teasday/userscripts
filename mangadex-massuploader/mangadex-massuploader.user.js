@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MangaDex Mass Uploader
 // @namespace    Teasday
-// @version      1.1
+// @version      1.2
 // @license      GNU GPLv3
 // @description  Upload en mass
 // @author       Teasday
@@ -10,6 +10,7 @@
 // @homepageURL  https://teasday.github.io/userscripts/mangadex-massuploader/
 // @updateURL    https://raw.githubusercontent.com/teasday/userscripts/master/mangadex-massuploader/mangadex-massuploader.meta.js
 // @downloadURL  https://raw.githubusercontent.com/teasday/userscripts/master/mangadex-massuploader/mangadex-massuploader.user.js
+// @require      http://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js
 // @grant        none
 // ==/UserScript==
 
@@ -18,6 +19,8 @@
 /* jshint asi: true */
 (function() {
   'use strict'
+
+  const $ = jQuery.noConflict(true)
 
   const regexDefaultVolume  = /.*v[^\d]*?(\.?\d+(?:\.\d+)*[a-zA-Z]?\d*)/i
   const regexDefaultChapter = /.*c[^\d]*?(\.?\d+(?:\.\d+)*[a-zA-Z]?\d*)/i
@@ -34,7 +37,7 @@
     <div class="panel-heading">
       <h3 class="panel-title">
         <span class="fas fa-upload fa-fw" aria-hidden="true" title=""></span> Mass upload
-        <small>v1.0 by Teasday</small>
+        <small>v1.2 by Teasday</small>
       </h3>
     </div>
     <div class="panel-body">
@@ -95,7 +98,7 @@
 
   // Language
   $('<label class="col-sm-3 control-label">Language</label>').appendTo(settings)
-  langPicker.clone().appendTo($('<div class="col-sm-9">').appendTo(settings))
+  langPicker.clone().removeClass('selectpicker').appendTo($('<div class="col-sm-9">').appendTo(settings))
 
   $('<h4>File settings</h4>').appendTo(settings)
 
