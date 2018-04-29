@@ -36,7 +36,7 @@
   `<div class="panel panel-default">
     <div class="panel-heading">
       <h3 class="panel-title">
-        <span class="fas fa-upload fa-fw" aria-hidden="true" title=""></span> Mass upload Beta
+        <span class="fas fa-upload fa-fw" aria-hidden="true" title=""></span> Mass upload
         <small>v1.3 by Teasday</small>
       </h3>
     </div>
