@@ -1,9 +1,9 @@
 // ==UserScript==
 // @name         MangaDex Reader
 // @namespace    Teasday
-// @version      0.2
+// @version      0.3
 // @license      GNU GPLv3
-// @description  ｷﾀ━━━━━━(ﾟ∀ﾟ)━━━━━━ !!!!!
+// @description  ｷﾀ━━━━━━(ﾟ∀ﾟ)━━━━━━!!!!!
 // @author       Teasday
 // @match        https://mangadex.org/chapter/*
 // @icon         https://mangadex.org/favicon.ico
@@ -15,6 +15,12 @@
 /* jshint asi: true */
 (function() {
   'use strict'
+
+  function jqFetch(opts) {
+    return new Promise((resolve, reject) => {
+      jQuery.ajax(opts).done(resolve).fail(reject)
+    })
+  }
 
   class Manga {
     constructor(data) {
@@ -90,6 +96,7 @@
         return this.chapterList[index - 1].id
       }
     }
+
     getNextChapterId(id) {
       const index = this.chapterList.findIndex(c => c.id === id)
       if (index === -1 || index === this.chapterList.length - 1) {
@@ -118,13 +125,22 @@
       if (id in Manga.cache) {
         return Promise.resolve(Manga.cache[id])
       }
-      return fetch(new Request(this.API_URL + id, {
-        headers: new Headers({
+
+      return jqFetch({
+        url: this.API_URL + id,
+        headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64)',
           'Cookie': 'mangadex_h_toggle=1'
-        })
-      }))
-      .then((res) => res.json())
+        },
+        dataType: 'json'
+      })
+      // return fetch(new Request(this.API_URL + id, {
+      //   headers: new Headers({
+      //     'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64)',
+      //     'Cookie': 'mangadex_h_toggle=1'
+      //   })
+      // }))
+      // .then((res) => res.json())
       .then((data) => {
         Manga.cache[id] = new Manga(data)
         return Manga.cache[id]
@@ -133,6 +149,7 @@
 
     static get API_URL() { return '/api/3640f3fb/' }
   }
+
   Manga.cache = {}
 
   class Chapter {
@@ -169,13 +186,20 @@
       if (id in Chapter.cache) {
         return Promise.resolve(Chapter.cache[id])
       }
-      return fetch(new Request(this.API_URL + id, {
-        headers: new Headers({
+      return jqFetch({
+        url: this.API_URL + id,
+        headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64)',
           'Cookie': 'mangadex_h_toggle=1'
-        })
-      }))
-      .then((res) => res.text())
+        }
+      })
+      // return fetch(new Request(this.API_URL + id, {
+      //   headers: new Headers({
+      //     'User-Agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64)',
+      //     'Cookie': 'mangadex_h_toggle=1'
+      //   })
+      // }))
+      // .then((res) => res.text())
       .then((data) => {
         const [,json] = data.match(/<script data-type="chapter">(.*?)<\/script>/)
         return JSON.parse(json)
@@ -199,36 +223,93 @@
 
     static get API_URL() { return '/chapter/' }
   }
+
   Chapter.cache = {}
 
   class Reader {
     constructor() {
       document.body.appendChild(document.querySelector('script[data-type="chapter"]').cloneNode(true))
+      this.loadSettings()
       this.initializeContainer()
-
       this.container = document.querySelector('div[role="main"]')
       this.imageContainer = this.container.querySelector('.reader-images')
-      this.imageCache = {}
-      this.preloadPageAmount = 3
-      this.renderedPages = 0
-      this.currentPage = null
-
       const path = document.querySelector('meta[property="og:url"]').content.split('/')
       this.setChapter(parseInt(path[4])).then(() => {
-        this.setScrollingSpeed(parseInt(localStorage.getItem('reader.scrollingSpeed')) || undefined)
-        this.setDisplayFit(parseInt(localStorage.getItem('reader.displayFit')) || undefined)
-        this.setDirection(parseInt(localStorage.getItem('reader.direction')) || undefined)
-        this.setRenderingMode(parseInt(localStorage.getItem('reader.renderingMode')) || undefined, true)
+        console.log(this.chapter)
+        // this.saveAllSettings()
         this.registerEvents()
         let page = path.length === 6 ? parseInt(path[5]) || 1 : 1
         if (page === -1) {
           page = this.chapter.totalPages
         }
-        this.moveToPage(page, true)
+        this.moveToPage(page, false)
         this.pushHistory(this.currentPage, true)
       }).catch((err) => {
         console.error(err)
       })
+    }
+
+    loadSettings() {
+      this.settings = {}
+      const defaults = {
+        'displayFit': Reader.DISPLAY_FIT.SINGLE,
+        'direction': Reader.DIRECTION.LTR,
+        'renderingMode': Reader.RENDERING_MODE.FIT_BOTH,
+        'scrollingSpeed': 3,
+        'preloadPages': 3,
+        'swipeSensitivity': 3,
+        'pageTapTurn': 1,
+      }
+      for (let [key, def] of Object.entries(defaults)) {
+        const value = parseInt(localStorage.getItem(`reader.${key}`))
+        if (isNaN(value)) {
+          this.settings[key] = def
+          // this.saveSetting(key, def)
+        } else {
+          this.settings[key] = value
+          // this.saveSetting(key, value)
+        }
+      }
+    }
+
+    saveSetting(key, value) {
+      this.settings[key] = value
+      localStorage.setItem(`reader.${key}`, value)
+      this.updateSettingUI(key)
+    }
+
+    saveAllSettings() {
+      for (let [key, value] of Object.entries(this.settings)) {
+        this.saveSetting(key, value)
+      }
+    }
+
+    updateSettingUI(key) {
+      const value = this.settings[key]
+      this.container.querySelectorAll(`#modal-settings input[data-setting="${key}"]`).forEach(n => { n.value = value })
+      this.container.querySelectorAll(`#modal-settings select[data-setting="${key}"]`).forEach(n => { n.value = value })
+      this.container.querySelectorAll(`#modal-settings button[data-setting="${key}"]`).forEach(n => { n.classList.toggle('active', n.dataset.value == value) })
+
+      switch(key) {
+        case 'direction':
+          this.container.classList.toggle('direction-ltr', this.isDirectionLTR)
+          this.container.classList.toggle('direction-rtl', this.isDirectionRTL)
+          this.updateChapterLinks()
+          this.render(this.currentPage)
+          break
+        case 'renderingMode':
+          this.container.classList.toggle('single-page', this.isSinglePage)
+          this.container.classList.toggle('double-page', this.isDoublePage)
+          this.container.classList.toggle('long-strip',  this.isLongStrip)
+          this.resetRenderer()
+          break
+        case 'displayFit':
+          this.container.classList.toggle('no-resize',  this.isNoResize)
+          this.container.classList.toggle('fit-height', this.isFitHeight)
+          this.container.classList.toggle('fit-width',  this.isFitWidth)
+          this.container.classList.toggle('fit-both',   this.isFitBoth)
+          break
+      }
     }
 
     setChapter(id) {
@@ -243,8 +324,18 @@
         if (!this.manga.chapterList.length) {
           chapter.makeMangaChapterList()
         }
-        this.updateControlsUI()
+        if (this.manga.isLongStrip) {
+          this.settings.renderingMode = Reader.RENDERING_MODE.LONG
+        }
+        this.updateUI()
       })
+    }
+
+    updateUI() {
+      this.updateControlsUI()
+      for (let i in this.settings) {
+        this.updateSettingUI(i)
+      }
     }
 
     initializeContainer() {
@@ -336,7 +427,8 @@
           justify-content: center;
           text-align: center;
         }
-        .reader-images img {
+        .reader.single-page .reader-images img,
+        .reader.double-page .reader-images img {
           margin: 1px;
         }
         .reader.fit-height .reader-images,
@@ -537,7 +629,7 @@
               <span class="fas fa-angle-left fa-fw" aria-hidden="true"></span>
             </a>
             <div style="flex:1 0 auto;width:0;">
-              <select class="form-control selectpicker" id="jump-chapter" name="jump-chapter" data-size="10">
+              <select class="form-control selectpickerasd" id="jump-chapter" name="jump-chapter" data-size="10">
               </select>
             </div>
             <a class="chapter-link-right" style="font-size:30px" title="" href="">
@@ -599,7 +691,7 @@
                 <div class="form-group">
                   <label for="type_id" class="col-sm-3 control-label">Reason</label>
                   <div class="col-sm-9">
-                    <select required title="Select a reason" class="form-control selectpicker" name="type_id">
+                    <select required title="Select a reason" class="form-control selectpickerasd" name="type_id">
                       <option value="1">All images broken</option>
                       <option value="2">Some images broken</option>
                       <option value="3">Watermarked images</option>
@@ -643,18 +735,18 @@
               <div class="form-group">
                 <label class="col-sm-3 control-label">Fit display to</label>
                 <div class="col-sm-9" style="display:flex; flex-flow:row wrap;">
-                  <button type="button" data-value="1" data-setting="display" class="btn btn-default" style="flex:1 1 24%;">Container</button>
-                  <button type="button" data-value="2" data-setting="display" class="btn btn-default" style="flex:1 1 24%;">Width</button>
-                  <button type="button" data-value="3" data-setting="display" class="btn btn-default" style="flex:1 1 24%;">Height</button>
-                  <button type="button" data-value="4" data-setting="display" class="btn btn-default" style="flex:1 1 24%;">No resize</button>
+                  <button type="button" data-value="1" data-setting="displayFit" class="btn btn-default" style="flex:1 1 24%;">Container</button>
+                  <button type="button" data-value="2" data-setting="displayFit" class="btn btn-default" style="flex:1 1 24%;">Width</button>
+                  <button type="button" data-value="3" data-setting="displayFit" class="btn btn-default" style="flex:1 1 24%;">Height</button>
+                  <button type="button" data-value="4" data-setting="displayFit" class="btn btn-default" style="flex:1 1 24%;">No resize</button>
                 </div>
               </div>
               <div class="form-group">
                 <label for="info" class="col-sm-3 control-label">Page rendering</label>
                 <div class="col-sm-9" style="display:flex; flex-flow:row wrap;">
-                  <button type="button" data-value="1" data-setting="rendering" class="btn btn-default" style="flex-grow:1;">Single</button>
-                  <button type="button" data-value="2" data-setting="rendering" class="btn btn-default" style="flex-grow:1;">Double</button>
-                  <button type="button" data-value="3" data-setting="rendering" class="btn btn-default" style="flex-grow:1;">Long strip</button>
+                  <button type="button" data-value="1" data-setting="renderingMode" class="btn btn-default" style="flex-grow:1;">Single</button>
+                  <button type="button" data-value="2" data-setting="renderingMode" class="btn btn-default" style="flex-grow:1;">Double</button>
+                  <button type="button" data-value="3" data-setting="renderingMode" class="btn btn-default" style="flex-grow:1;">Long strip</button>
                 </div>
               </div>
               <div class="form-group">
@@ -667,16 +759,36 @@
               <div class="form-group">
                 <label for="info" class="col-sm-3 control-label">Keyboard scroll</label>
                 <div class="col-sm-9" style="display:flex; flex-flow:row wrap;">
-                  <button type="button" data-value="1" data-setting="scrolling" class="btn btn-default" style="flex:1 1 24%;">Slow</button>
-                  <button type="button" data-value="3" data-setting="scrolling" class="btn btn-default" style="flex:1 1 24%;">Normal</button>
-                  <button type="button" data-value="9" data-setting="scrolling" class="btn btn-default" style="flex:1 1 24%;">Fast</button>
-                  <button type="button" data-value="21" data-setting="scrolling" class="btn btn-default" style="flex:1 1 24%;">Sanic</button>
+                  <button type="button" data-value="1" data-setting="scrollingSpeed" class="btn btn-default" style="flex:1 1 24%;">Slow</button>
+                  <button type="button" data-value="3" data-setting="scrollingSpeed" class="btn btn-default" style="flex:1 1 24%;">Normal</button>
+                  <button type="button" data-value="9" data-setting="scrollingSpeed" class="btn btn-default" style="flex:1 1 24%;">Fast</button>
+                  <button type="button" data-value="21" data-setting="scrollingSpeed" class="btn btn-default" style="flex:1 1 24%;">Sanic</button>
                 </div>
               </div>
               <div class="form-group">
-                <label for="info" class="col-sm-3 control-label">Preload images</label>
+                <label for="info" class="col-sm-3 control-label">Preload images (0 to 5)</label>
                 <div class="col-sm-9">
-                  <input data-setting="preload" class="form-control" type="number" min="0" max="5" placeholder="0 to 5 images (default: 3)"></input>
+                  <input data-setting="preloadPages" class="form-control" type="number" min="0" max="5" placeholder="0 to 5 images (default: 3)"></input>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="info" class="col-sm-3 control-label">Swipe sensitivity</label>
+                <div class="col-sm-9">
+                  <select class="form-control selectpickerasd" data-setting="swipeSensitivity">
+                    <option value="1">Very high</option>
+                    <option value="2">High</option>
+                    <option value="3">Normal</option>
+                    <option value="4">Low</option>
+                    <option value="5">Very low</option>
+                    <option value="0">Off</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="info" class="col-sm-3 control-label">Page turn by tapping</label>
+                <div class="col-sm-9" style="display:flex; flex-flow:row wrap;">
+                  <button type="button" data-value="1" data-setting="pageTapTurn" class="btn btn-default" style="flex:1 1 50%;">Enabled</button>
+                  <button type="button" data-value="0" data-setting="pageTapTurn" class="btn btn-default" style="flex:1 1 50%;">Disabled</button>
                 </div>
               </div>
             </div>
@@ -712,6 +824,7 @@
       this.container.querySelector('.reader-controls-title').innerHTML = title
       this.container.querySelector('.reader-controls-chapters select').innerHTML = chapters
       this.container.querySelector('.reader-controls-groups ul').innerHTML = groups
+      this.container.querySelector('.reader-controls-mode .long-strip').innerHTML = `Long strip${this.manga.isLongStrip ? ' (native)' : ''}`
       this.container.querySelector('#comment-button').href = this.pageURL(this.chapter.id) + '/comments'
       jQuery('.selectpicker').selectpicker('refresh')
       this.updateChapterLinks()
@@ -719,11 +832,13 @@
 
     updateChapterLinks() {
       const update = (toLeft) => {
-        let id = (toLeft === this.isDirectionLTR) ? this.chapter.prevChapterId : this.chapter.nextChapterId
-        return (a) => {
-          a.dataset.chapter = id
-          a.href = this.pageURL(id)
-          a.title = this.manga.getChapterTitle(id) || 'Back to manga'
+        if (this.settings.direction != null) {
+          let id = (toLeft === this.isDirectionLTR) ? this.chapter.prevChapterId : this.chapter.nextChapterId
+          return (a) => {
+            a.dataset.chapter = id
+            a.href = this.pageURL(id)
+            a.title = this.manga.getChapterTitle(id) || 'Back to manga'
+          }
         }
       }
       Array.from(this.container.querySelectorAll('a.chapter-link-left')).forEach(update(true))
@@ -755,15 +870,15 @@
         #666 ${notch}%)`
     }
 
-    get isSinglePage()   { return this.renderingMode === Reader.RENDERING_MODE.SINGLE }
-    get isDoublePage()   { return this.renderingMode === Reader.RENDERING_MODE.DOUBLE }
-    get isLongStrip()    { return this.renderingMode === Reader.RENDERING_MODE.LONG }
-    get isNoResize()     { return this.displayFit === Reader.DISPLAY_FIT.NO_RESIZE }
-    get isFitHeight()    { return this.displayFit === Reader.DISPLAY_FIT.FIT_HEIGHT }
-    get isFitWidth()     { return this.displayFit === Reader.DISPLAY_FIT.FIT_WIDTH }
-    get isFitBoth()      { return this.displayFit === Reader.DISPLAY_FIT.FIT_BOTH }
-    get isDirectionLTR() { return this.direction === Reader.DIRECTION.LTR }
-    get isDirectionRTL() { return this.direction === Reader.DIRECTION.RTL }
+    get isSinglePage()   { return this.settings.renderingMode === Reader.RENDERING_MODE.SINGLE }
+    get isDoublePage()   { return this.settings.renderingMode === Reader.RENDERING_MODE.DOUBLE }
+    get isLongStrip()    { return this.settings.renderingMode === Reader.RENDERING_MODE.LONG }
+    get isNoResize()     { return this.settings.displayFit === Reader.DISPLAY_FIT.NO_RESIZE }
+    get isFitHeight()    { return this.settings.displayFit === Reader.DISPLAY_FIT.FIT_HEIGHT }
+    get isFitWidth()     { return this.settings.displayFit === Reader.DISPLAY_FIT.FIT_WIDTH }
+    get isFitBoth()      { return this.settings.displayFit === Reader.DISPLAY_FIT.FIT_BOTH }
+    get isDirectionLTR() { return this.settings.direction === Reader.DIRECTION.LTR }
+    get isDirectionRTL() { return this.settings.direction === Reader.DIRECTION.RTL }
 
     get isPageTurnForwards() { return this.previousPage < this.currentPage }
 
@@ -788,58 +903,9 @@
       return this.pageURL(this.chapter.id, Math.min(this.currentPage + (this.isDirectionLTR ? pages : -pages)), 0)
     }
 
-    setDirection(value = Reader.DIRECTION.LTR) {
-      if (value !== this.direction) {
-        this.direction = value
-        this.container.classList.toggle('direction-ltr', this.isDirectionLTR)
-        this.container.classList.toggle('direction-rtl', this.isDirectionRTL)
-        this.updateChapterLinks()
-        this.container.querySelectorAll('#modal-settings button[data-setting="direction"]').forEach((n,i) => n.classList.toggle('active', i === value-1))
-        localStorage.setItem('reader.direction', value)
-        if (this.renderingMode != null) {
-          this.resetRenderer()
-        }
-      }
-    }
-
-    setRenderingMode(value = Reader.RENDERING_MODE.SINGLE, noHistory) {
-      if (value !== this.renderingMode) {
-        this.renderingMode = value
-        this.container.classList.toggle('single-page', this.isSinglePage)
-        this.container.classList.toggle('double-page', this.isDoublePage)
-        this.container.classList.toggle('long-strip',  this.isLongStrip)
-        this.container.querySelectorAll('#modal-settings button[data-setting="rendering"]').forEach((n,i) => n.classList.toggle('active', i === value-1))
-        localStorage.setItem('reader.renderingMode', value)
-        this.resetRenderer()
-        if (!noHistory) {
-          this.pushHistory(this.currentPage)
-        }
-      }
-    }
-
-    setDisplayFit(value = Reader.DISPLAY_FIT.FIT_WIDTH) {
-      if (value !== this.displayFit) {
-        this.displayFit = value
-        this.container.classList.toggle('no-resize',  this.isNoResize)
-        this.container.classList.toggle('fit-height', this.isFitHeight)
-        this.container.classList.toggle('fit-width',  this.isFitWidth)
-        this.container.classList.toggle('fit-both',   this.isFitBoth)
-        this.container.querySelectorAll('#modal-settings button[data-setting="display"]').forEach((n,i) => n.classList.toggle('active', i === value-1))
-        localStorage.setItem('reader.displayFit', value)
-      }
-    }
-
-    setScrollingSpeed(value = 3) {
-      if (value !== this.scrollingSpeed) {
-        this.scrollingSpeed = value
-        this.container.querySelectorAll('#modal-settings button[data-setting="scrolling"]').forEach(n => n.classList.toggle('active', n.dataset.value == value))
-        localStorage.setItem('reader.scrollingSpeed', value)
-      }
-    }
-
-    resetRenderer() {
+    resetRenderer(doRender = true) {
       this.imageContainer.innerHTML = ''
-      switch(this.renderingMode) {
+      switch(this.settings.renderingMode) {
         case Reader.RENDERING_MODE.LONG:
           this.longStripScrollListener = () => { this.renderLongStrip() }
           window.addEventListener('scroll', this.longStripScrollListener)
@@ -851,10 +917,9 @@
         case Reader.RENDERING_MODE.SINGLE:
         default:
           window.removeEventListener('scroll', this.longStripScrollListener)
-          this.renderedPages = 1
           break
       }
-      if (this.currentPage != null) {
+      if (doRender) {
         this.render(this.currentPage)
       }
     }
@@ -864,7 +929,7 @@
       this.container.classList.toggle('is-loading', loading)
     }
 
-    tryPreloading(amount = this.preloadPageAmount) {
+    tryPreloading(amount = this.settings.preloadPages) {
       const images = []
       for (let i = this.currentPage + 1; i <= this.currentPage + amount &&  i <= this.chapter.totalPages; i++) {
         images.push(i)
@@ -903,19 +968,21 @@
     }
 
     render(pg) {
-      this.previousPage = this.currentPage
-      this.currentPage = pg
-      switch(this.renderingMode) {
-        case Reader.RENDERING_MODE.DOUBLE:
-          this.renderDoublePage(pg)
-          break
-        case Reader.RENDERING_MODE.LONG:
-          this.renderLongStrip()
-          break
-        case Reader.RENDERING_MODE.SINGLE:
-        default:
-          this.renderSinglePage(pg)
-          break
+      if (pg != null) {
+        this.previousPage = this.currentPage
+        this.currentPage = pg
+        switch(this.settings.renderingMode) {
+          case Reader.RENDERING_MODE.DOUBLE:
+            this.renderDoublePage(pg)
+            break
+          case Reader.RENDERING_MODE.LONG:
+            this.renderLongStrip()
+            break
+          case Reader.RENDERING_MODE.SINGLE:
+          default:
+            this.renderSinglePage(pg)
+            break
+        }
       }
     }
 
@@ -928,6 +995,7 @@
           if (curImage) {
             this.imageContainer.removeChild(curImage)
           }
+          this.renderedPages = 1
           this.setLoading(false)
           this.updatePageLinks(pg)
           this.updatePageBar(pg)
@@ -965,7 +1033,7 @@
           this.setLoading(false)
           this.updatePageLinks(`${this.currentPage}${this.renderedPages===2 ? ` - ${this.currentPage + 1}` : ''}`)
           this.updatePageBar(this.currentPage + newPages.length - 1)
-          this.tryPreloading(Math.max(this.preloadPageAmount, 2))
+          this.tryPreloading(Math.max(this.settings.preloadPages, 2))
         }
       }
       newPages.filter(pg => !pg.loaded).forEach(pg => {
@@ -1001,21 +1069,21 @@
       }
     }
 
-    moveToPage(pg, noHistory) {
+    moveToPage(pg, useHistory = true) {
       if (this.isLoading || this.isLongStrip) {
         return
       }
       if (pg === -1) {
-        this.moveToPage(this.chapter.totalPages, noHistory)
+        this.moveToPage(this.chapter.totalPages, useHistory)
       } else if (pg === 0) {
-        this.moveToChapter(this.chapter.prevChapterId, -1, noHistory)
+        this.moveToChapter(this.chapter.prevChapterId, -1, useHistory)
       } else if (pg > this.chapter.totalPages) {
-        this.moveToChapter(this.chapter.nextChapterId, 1, noHistory)
+        this.moveToChapter(this.chapter.nextChapterId, 1, useHistory)
       } else if (pg !== this.currentPage) {
         // order is important: render, push to history, scroll to top
         // it lets history items retain their scroll position
         this.render(pg)
-        if (!noHistory) {
+        if (useHistory) {
           this.pushHistory(this.currentPage)
         }
         this.imageContainer.scrollIntoView()
@@ -1023,27 +1091,27 @@
       }
     }
 
-    moveToChapter(id, pg = 1, noHistory) {
+    moveToChapter(id, pg = 1, useHistory = true) {
       if (id === 0) {
         window.location = this.manga.url
       } else {
         return this.setChapter(id).then(() => {
-          this.moveToPage(pg, noHistory)
+          this.moveToPage(pg, useHistory)
         })
       }
     }
 
     turnPageLeft(pages = this.isDoublePage ? 2 : 1) {
-      this.turnPage(true, pages)
+      this.turnPage(true, Math.max(pages, 0))
     }
 
     turnPageRight(pages = this.isDoublePage ? 2 : 1) {
-      this.turnPage(false, pages)
+      this.turnPage(false, Math.max(pages, 0))
     }
 
     turnPage(toLeft, pages = this.isDoublePage ? 2 : 1) {
       if (toLeft === this.isDirectionLTR) {
-        if (this.isDoublePage && this.currentPage === 2) {
+        if (this.isDoublePage && this.currentPage <= 2) {
           pages = 1
         }
         this.moveToPage(this.currentPage - pages)
@@ -1055,11 +1123,11 @@
       }
     }
 
-    pushHistory(pg, replace) {
+    pushHistory(pg, replace = false) {
       const state = {
         page: pg,
         chapter: this.chapter.id,
-        mode: this.renderingMode,
+        mode: this.settings.renderingMode,
       }
       const url = this.pageURL(this.chapter.id, pg)
       if (replace) {
@@ -1073,11 +1141,14 @@
       // history
       window.onpopstate = (evt) => {
         if (evt.state != null) {
-          this.setRenderingMode(evt.state.mode, true)
+          if (this.settings.renderingMode != evt.state.mode) {
+            this.saveSetting('renderingMode', evt.state.mode)
+            this.resetRenderer(false)
+          }
           if (evt.state.chapter == this.chapter.id) {
-            this.moveToPage(evt.state.page, true)
+            this.moveToPage(evt.state.page, false)
           } else {
-            this.moveToChapter(evt.state.chapter, evt.state.page, true)
+            this.moveToChapter(evt.state.chapter, evt.state.page, false)
           }
         }
       }
@@ -1092,8 +1163,17 @@
       })
       this.imageContainer.addEventListener('click', (evt) => {
         evt.stopPropagation()
-        const isLeft = (evt.clientX - this.imageContainer.offsetLeft < this.imageContainer.offsetWidth / 2)
-        this.turnPage(isLeft)
+        if (this.settings.pageTapTurn) {
+          const isLeft = (evt.clientX - this.imageContainer.offsetLeft < this.imageContainer.offsetWidth / 2)
+          this.turnPage(isLeft)
+        }
+      })
+      $(this.imageContainer).swipe({
+        swipe: (evt, direction, distance, duration, fingerCount) => {
+          direction === 'left' ? this.turnPageRight() : this.turnPageLeft()
+        },
+        threshold: 70 * this.settings.swipeSensitivity,
+        cancelThreshold: 10
       })
       this.container.querySelector('.page-link-left').addEventListener('click', (evt) => {
         evt.preventDefault()
@@ -1142,13 +1222,20 @@
         submitBtn.disabled = true
         const alertContainer = evt.target.querySelector('.alert-container')
         alertContainer.innerHTML = ''
-        fetch(`/ajax/actions.ajax.php?function=chapter_report&id=${this.chapter.id}`, {
-          method: 'POST',
-          body: new FormData(evt.target),
-          credentials: 'include',
-          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        jqFetch({
+          url: `/ajax/actions.ajax.php?function=chapter_report&id=${this.chapter.id}`,
+          type: 'post',
+          data: new FormData(evt.target),
+          contentType: false,
+          processData: false,
         })
-        .then(res => res.text())
+        // fetch(`/ajax/actions.ajax.php?function=chapter_report&id=${this.chapter.id}`, {
+        //   method: 'post',
+        //   body: new FormData(evt.target),
+        //   credentials: 'include',
+        //   headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        // })
+        // .then(res => res.text())
         .then(data => {
           if (data) {
             alertContainer.innerHTML = data
@@ -1167,17 +1254,15 @@
           submitBtn.disabled = false
         })
       })
-      this.container.querySelectorAll('#modal-settings button[data-setting]').forEach(c => c.addEventListener('click', (evt) => {
-        switch(evt.target.dataset.setting) {
-          case 'rendering': return this.setRenderingMode(parseInt(evt.target.dataset.value))
-          case 'display': return this.setDisplayFit(parseInt(evt.target.dataset.value))
-          case 'direction': return this.setDirection(parseInt(evt.target.dataset.value))
-          case 'scrolling': return this.setScrollingSpeed(parseInt(evt.target.dataset.value))
+      const getSettingValue = (evt) => {
+        const value = parseInt(evt.target.dataset.value != null ? evt.target.dataset.value : evt.target.value)
+        if (!isNaN(value)) {
+          this.saveSetting(evt.target.dataset.setting, value)
         }
-      }))
-      this.container.querySelectorAll('#modal-settings input[data-setting]').forEach(c => c.addEventListener('change', (evt) => {
-        console.log(evt.target.dataset.setting, evt.target.value)
-      }))
+      }
+      this.container.querySelectorAll('#modal-settings input[data-setting]').forEach(c => c.addEventListener('change', getSettingValue))
+      this.container.querySelectorAll('#modal-settings select[data-setting]').forEach(c => c.addEventListener('change', getSettingValue))
+      this.container.querySelectorAll('#modal-settings button[data-setting]').forEach(c => c.addEventListener('click', getSettingValue))
 
       // keyboard shortcuts
       // FIXME: remove the current listener
@@ -1200,17 +1285,20 @@
             case 'arrowup':
             case 'up':
             case 'w':
-              return Reader.scroll(-this.scrollingSpeed)
+              return Reader.scroll(-this.settings.scrollingSpeed)
             case 'arrowdown':
             case 'down':
             case 's':
-              return Reader.scroll(this.scrollingSpeed)
+              return Reader.scroll(this.settings.scrollingSpeed)
             case 'f':
-              return this.setDisplayFit(this.displayFit % 2 + (evt.shiftKey ? 3 : 1))
+              return this.saveSetting('displayFit', this.settings.displayFit % 2 + (evt.shiftKey ? 3 : 1))
+              // return this.setDisplayFit(this.displayFit % 2 + (evt.shiftKey ? 3 : 1))
             case 'g':
-              return this.setRenderingMode(this.renderingMode % 3 + 1)
+              return this.saveSetting('renderingMode', this.settings.renderingMode % 3 + 1)
+              // return this.setRenderingMode(this.renderingMode % 3 + 1)
             case 'h':
-              return this.setDirection(this.direction % 2 + 1)
+              return this.saveSetting('direction', this.settings.direction % 2 + 1)
+              // return this.setDirection(this.direction % 2 + 1)
             case 't':
               // return this.container.querySelector('.reader-controls-wrapper').classList.toggle('collapsed')
               const fullscreen = this.container.classList.toggle('fullscreen')
