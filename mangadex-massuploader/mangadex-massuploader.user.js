@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MangaDex Mass Uploader
 // @namespace    Teasday
-// @version      1.2
+// @version      1.3
 // @license      GNU GPLv3
 // @description  Upload en mass
 // @author       Teasday
@@ -22,13 +22,13 @@
 
   const $ = jQuery.noConflict(true)
 
-  const regexDefaultVolume  = /.*v[^\d]*?(\.?\d+(?:\.\d+)*[a-zA-Z]?\d*)/i
-  const regexDefaultChapter = /.*c[^\d]*?(\.?\d+(?:\.\d+)*[a-zA-Z]?\d*)/i
+  const regexDefaultVolume  = /.*v[^\dc]*?(\.?\d+(?:\.\d+)*[a-zA-Z]?\d*)/i
+  const regexDefaultChapter = /.*c[^\dv]*?(\.?\d+(?:\.\d+)*[a-zA-Z]?\d*)/i
   const regexDefaultGroup = /.*(?:\[([^\]]+)\].*)/i
   const regexZeroPad = /^0+(?=\d)/
 
   const mangaId = $('#manga_id').val()
-  const langPicker = $('#lang_id')
+  const langPicker = $('#lang_id').clone().attr('id', null)
   const groupPicker = $('#group_id')
   const actions = $('#upload_form > div:last-child').prev()
 
@@ -36,7 +36,7 @@
   `<div class="panel panel-default">
     <div class="panel-heading">
       <h3 class="panel-title">
-        <span class="fas fa-upload fa-fw" aria-hidden="true" title=""></span> Mass upload
+        <span class="fas fa-upload fa-fw" aria-hidden="true" title=""></span> Mass upload Beta
         <small>v1.2 by Teasday</small>
       </h3>
     </div>
@@ -46,35 +46,36 @@
   panel.insertBefore($('#content .panel:eq(1)'))
   const panelBody = panel.find('.panel-body')
 
-  const settings = $('<div id="mass-upload-settings" class="form-horizontal">').appendTo(panelBody)
+  const settings = $('<div id="tea-mu-settings" class="form-horizontal">').appendTo(panelBody)
 
   /* CSS */
 
   $('<style>', { text: `
-    #mass-upload-settings input {
+    #tea-mu-settings input,
+    #tea-mu-settings textarea {
       margin-bottom: 1em;
     }
-    #mass-upload-chapter-list td {
+    #tea-mu-chapter-list td {
       vertical-align: middle;
     }
-    #mass-upload-chapter-list td,
-    #mass-upload-chapter-list tr {
+    #tea-mu-chapter-list td,
+    #tea-mu-chapter-list tr {
       transition: background 0.2s ease;
     }
-    #mass-upload-chapter-list tr {
+    #tea-mu-chapter-list tr {
       background-image: linear-gradient(90deg, #325560, #254751);
       background-repeat: repeat-y;
       background-size: 0%;
     }
-    #mass-upload-chapter-list tbody:empty:after {
+    #tea-mu-chapter-list tbody:empty:after {
       content: 'No files selected.';
     }
-    #console-area {
+    #tea-mu-console-area {
       background: rgba(0,0,0,0.35);
       padding: 0.5em 1em;
       margin: 1em 0;
     }
-    #console-area p {
+    #tea-mu-console-area p {
       margin: 0.5em 0;
     }
   `}).appendTo(document.head)
@@ -98,7 +99,7 @@
 
   // Language
   $('<label class="col-sm-3 control-label">Language</label>').appendTo(settings)
-  langPicker.clone().removeClass('selectpicker').appendTo($('<div class="col-sm-9">').appendTo(settings))
+  langPicker.removeClass('selectpicker').appendTo($('<div class="col-sm-9">').appendTo(settings))
 
   $('<h4>File settings</h4>').appendTo(settings)
 
@@ -129,12 +130,21 @@
 
   $('<h4>Chapter settings</h4>').appendTo(settings)
 
-  // Fallback
-  $('<label class="col-sm-3 control-label">Group name fallback</label>').appendTo(settings)
-  const inputFallbackGroup = $('<input>', {
-    type: 'text',
+  // Multi group
+  $('<label class="col-sm-3 control-label">Amount of groups</label>').appendTo(settings)
+  const inputGroupAmount = $('<input>', {
+    type: 'number',
     class: 'form-control',
-    placeholder: 'doki fansubs',
+    value: 1,
+    min: 1,
+  }).prependTo($('<div class="col-sm-9"></div>').appendTo(settings))
+
+  // Fallbacks
+  $('<label class="col-sm-3 control-label">Group name fallbacks</label>').appendTo(settings)
+  const inputGroupFallbacks = $('<textarea>', {
+    class: 'form-control',
+    style: 'resize:vertical',
+    placeholder: `doki fansubs\ngroup 2\ngroup 3`
   }).appendTo($('<div class="col-sm-9">').appendTo(settings))
 
   // Chapter titles
@@ -158,12 +168,12 @@
   }).appendTo($('<div class="col-sm-9">').appendTo(settings))
 
   // Chapter table
-  const chapterTable = $(`<table id="mass-upload-chapter-list" class="table table-condensed table-striped">
+  const chapterTable = $(`<table id="tea-mu-chapter-list" class="table table-condensed table-striped">
       <thead><tr>
         <td>Filename</td>
         <td style="width:6em">Volume number</td>
         <td style="width:6em">Chapter number</td>
-        <td>Chapter Title</td>
+        <td>Chapter title</td>
         <td style="width:7em">Group ID</td>
         <td>Group name</td>
         <td></td>
@@ -175,7 +185,7 @@
       <span class="fas fa-upload fa-fw"></span> Upload
     </button>`).appendTo($('<div class="text-right">').appendTo(panelBody))
 
-  const consoleArea = $(`<div id="console-area">`).appendTo(panelBody)
+  const consoleArea = $(`<div id="tea-mu-console-area">`).appendTo(panelBody)
 
   const progressBarTotal = $(`<div role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" style="width: 0%;" class="progress-bar progress-bar-info"></div>`)
     .appendTo($(`<div class="progress" style="height: 38px; display: none;">`)
@@ -201,27 +211,38 @@
       this.volume = getRegexResult(regexVolume, file.name).replace(regexZeroPad, '')
       this.chapter = getRegexResult(regexChapter, file.name).replace(regexZeroPad, '')
       this.chapterName = titleMap.get(this.chapter) || ''
-      this.groupName = getRegexResult(regexGroup, file.name) || inputFallbackGroup.val()
+
+      this.groups = Array(parseInt(inputGroupAmount.val()) || 1).fill({})
+      inputGroupFallbacks.val().split('\n').forEach((g, i) => this.setGroupName(i, g))
+      this.setGroupName(0, getRegexResult(regexGroup, file.name))
+
       this.makeRow()
       this.uploading = false
       this.halted = false
       this.success = false
       this.progress = 0
     }
-    get groupName () { return this._groupName }
-    set groupName (val) {
-      const groupOpt = groupPicker.children().get()
-        .find(opt => opt.text.toLowerCase() === val.toLowerCase())
-      this._groupId = groupOpt ? groupOpt.value : ''
-      this._groupName = groupOpt ? groupOpt.text : val
+
+    setGroupId(index, id) {
+      if (id) {
+        const groupOpt = groupPicker.children().get().find(opt => opt.value === id)
+        this.groups[index] = {
+          id: groupOpt ? groupOpt.value : '',
+          name: groupOpt ? groupOpt.text : ''
+        }
+      }
     }
-    get groupId () { return this._groupId }
-    set groupId (val) {
-      const groupOpt = groupPicker.children().get()
-        .find(opt => opt.value === val)
-      this._groupId = val
-      this._groupName = groupOpt ? groupOpt.text : ''
+
+    setGroupName(index, name) {
+      if (name) {
+        const groupOpt = groupPicker.children().get().find(opt => opt.text.toLowerCase() === name.toLowerCase())
+        this.groups[index] = {
+          id: groupOpt ? groupOpt.value : '',
+          name: groupOpt ? groupOpt.text : ''
+        }
+      }
     }
+
     get fullname () {
       let str = `[${this.groupName || ' '}] `
       if (this.volume !== '')      str += `Vol. ${this.volume} `
@@ -231,7 +252,8 @@
       return str
     }
     get hasError () {
-      return !this.groupId || !this.groupName || this.progress < 0
+      return this.groups.some(g => g == null || !g.id || !g.name) || this.progress < 0
+      // return !this.groupId || !this.groupName || this.progress < 0
     }
     get uploading () { return this._uploading }
     set uploading (val) {
@@ -272,6 +294,7 @@
       }
     }
     makeRow () {
+      // this isn't the prettiest function ever but oh well
       const tr = this.tr = $(`<tr>`)
       $(`<td class="small">${this.file.name}</td>`)
         .appendTo(tr)
@@ -279,8 +302,6 @@
         ['volume',      'text'],
         ['chapter',     'text'],
         ['chapterName', 'text'],
-        ['groupId',     'number'],
-        ['groupName',   'text']
       ]
       inputs.forEach(([val, type]) => {
         $('<input>', {
@@ -294,8 +315,24 @@
           this.update()
         }).appendTo($('<td>').appendTo(tr))
       })
+      const groupInputs = []
+      for (let i = 0; i < this.groups.length; i++) {
+        $('<input>', { type: 'number', class: 'form-control', name: `groupId${i+1}`, value: this.groups[i].id })
+        .change(e => {
+          this.setGroupId(i, e.target.value)
+          tr.find(`input[name=groupName${i+1}]`).val(this.groups[i].name)
+          this.update()
+        }).appendTo($('<td>').appendTo(tr))
+        $('<input>', { type: 'text', class: 'form-control', name: `groupName${i+1}`, value: this.groups[i].name })
+        .on('input', e => {
+          this.setGroupName(i, e.target.value)
+          tr.find(`input[name=groupId${i+1}]`).val(this.groups[i].id)
+          this.update()
+        }).appendTo($('<td>').appendTo(tr))
+      }
       $(`<td><i class="fa fa-fw fa-2x fa-trash"></i></td>`)
         .click(e => this.action()).appendTo(tr)
+      this.update()
       return tr
     }
     get formData() {
@@ -304,9 +341,10 @@
       fd.append('volume_number', this.volume)
       fd.append('chapter_number', this.chapter)
       fd.append('chapter_name', this.chapterName)
-      fd.append('group_id', this.groupId)
+      // fd.append('group_id', this.groupId)
       fd.append('lang_id', langPicker.val())
       fd.append('file', this.file)
+      this.groups.forEach((g, i) => fd.append(`group_id${i>0 ? `_${i+1}` : ''}`, g.id))
       return fd
     }
     upload() {
