@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MangaDex Reader
 // @namespace    Teasday
-// @version      0.4.1
+// @version      0.4.2
 // @license      GNU GPLv3
 // @description  ｷﾀ━━━━━━(ﾟ∀ﾟ)━━━━━━!!!!!
 // @author       Teasday
@@ -239,10 +239,10 @@
       thumb.style.width = 100/pg*this.renderedPages + '%'
 
       this.container.querySelector('.reader-page-bar .track').style.background =
-        `#444 repeating-linear-gradient(
+        `#222 repeating-linear-gradient(
         to ${this.isDirectionRTL ? 'left' : 'right'},
-        #444,
-        #444 calc(${notch}% - 3px),
+        #222,
+        #222 calc(${notch}% - 2px),
         #666 ${notch}%)`
     }
 
@@ -383,8 +383,10 @@
       if (pg == null || this.renderer == null) {
         return Promise.reject()
       }
-      this.previousPage = this.currentPage
-      this.currentPage = pg
+      if (typeof pg === 'number') {
+        this.previousPage = this.currentPage
+        this.currentPage = pg
+      }
       return this.renderer.render(pg).then(() => {
         this.updatePageLinks(this.currentPage)
         this.updatePageBar(this.currentPage + this.renderedPages - 1)

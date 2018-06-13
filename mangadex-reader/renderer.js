@@ -51,9 +51,10 @@
       const recStr = recs.reduce((acc, rec) => {
         const ch = rec.chapters[rec.chapters.length-1]
         const more = rec.chapters.length >= 2 ? ` <em>(+${rec.chapters.length-1} more)</em>` : ''
+        // FIXME: htmlentities hack
         return acc+`<a href="/chapter/${ch.id}" class="rec-item col-md-3 col-xs-6" data-chapter="${ch.id}">
           <img src="https://s1.mangadex.org/images/manga/${rec.id}.thumb.jpg"></img>
-          <p style="font-weight:bold">${rec.title}</p>
+          <p><strong>${$('<textarea/>').html(rec.title).text()}</strong></p>
           <p>${this.getChapterTitle(ch) + more}</p>
         </a>`
       }, '')

@@ -169,7 +169,7 @@ nav.navbar.hidden + .reader[data-renderer="long-strip"][data-display="fit-height
   /*border-top: 1px solid rgba(128, 128, 128, 0.5);*/
 }
 .reader-page-bar .track {
-  background: #444;
+  background: #222;
   border: 1px solid #aaa;
   width: 100%;
   margin: 3px 6px;
@@ -181,12 +181,12 @@ nav.navbar.hidden + .reader[data-renderer="long-strip"][data-display="fit-height
 .reader-page-bar .thumb {
   height: 100%;
   background: #ddd;
-  border-radius: 5px;
+  border-radius: 1em;
   float: left;
   width: 0%;
 }
 .reader-page-bar .trail {
-  background: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.25);
 }
 .reader-page-bar:hover .thumb {
   background: #fff;
@@ -232,12 +232,15 @@ nav.navbar.hidden + .reader[data-renderer="long-strip"][data-display="fit-height
 }
 
 .reader-recommendations .rec-item {
-  height: 100px;
+  height: 110px;
   padding: 5px;
   border-radius: 5px;
+  overflow: hidden;
 }
 .reader-recommendations .rec-item:hover {
-  background: rgba(128, 128, 128, 0.25);
+  background: rgba(57, 81, 102, 0.75);
+  color: #fff;
+  text-decoration: none;
 }
 .reader-recommendations .rec-item img {
   float: left;
