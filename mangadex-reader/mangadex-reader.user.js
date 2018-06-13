@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MangaDex Reader
 // @namespace    Teasday
-// @version      0.4.2
+// @version      0.4.3
 // @license      GNU GPLv3
 // @description  ｷﾀ━━━━━━(ﾟ∀ﾟ)━━━━━━!!!!!
 // @author       Teasday
@@ -159,6 +159,7 @@
     get renderedPages () { return this.renderer != null ? this.renderer.renderedPages : 0 }
 
     updateUI() {
+      document.title = `${this.manga.getChapterName(this.chapter.id, !this.settings.showDropdownTitles)} (${this.manga.title}) - MangaDex`
       this.updateControlsUI()
       for (let i in this.settings) {
         this.updateSettingUI(i)
@@ -243,7 +244,8 @@
         to ${this.isDirectionRTL ? 'left' : 'right'},
         #222,
         #222 calc(${notch}% - 2px),
-        #666 ${notch}%)`
+        #999 calc(${notch}% - 2px),
+        #999 ${notch}%)`
     }
 
     get isSinglePage()   { return this.settings.renderingMode === Reader.RENDERING_MODE.SINGLE }
@@ -399,7 +401,7 @@
     }
 
     moveToPage(pg, useHistory = true) {
-      if (this.isLoading || !(this.isSinglePage || this.isDoublePage)) {
+      if (this.isLoading ) {
         return
       }
       if (pg === -1) {
@@ -673,7 +675,7 @@
             case 'f':
               return this.saveSetting('displayFit', this.settings.displayFit % 2 + (evt.shiftKey ? 3 : 1))
             case 'g':
-              return this.saveSetting('renderingMode', this.settings.renderingMode % 3 + 1)
+              return this.saveSetting('renderingMode', this.settings.renderingMode % 3 + (evt.shiftKey ? -1 : 1))
             case 'h':
               return this.saveSetting('direction', this.settings.direction % 2 + 1)
             case 'r':

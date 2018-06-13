@@ -39,6 +39,21 @@
       }
     }
 
+    getChapterName(id) {
+      const ch = this.getChapterData(id)
+      if (!ch) {
+        return null
+      } else {
+        if (ch.title)
+          return ch.title
+        if (ch.chapter)
+          return `Ch. ${ch.chapter}`
+        if (ch.volume)
+          return `Vol. ${ch.volume}`
+        return 'Oneshot'
+      }
+    }
+
     makeChapterList(lang, [g1, g2, g3]) {
       this.chapterList = []
       const sameLang = this.chapters.filter(c => c.lang_code === lang)
