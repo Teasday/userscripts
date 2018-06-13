@@ -68,6 +68,7 @@
         }
       }
       this.recContainer.querySelectorAll('a').forEach(c => c.addEventListener('click', handler, true))
+      return Promise.resolve()
     }
 
     getChapterTitle(ch, numOnly) {

@@ -104,8 +104,8 @@ nav.navbar.hidden + .reader {
   /*height: 100vh;*/
 }
 /*nav.navbar.hidden + .reader .reader-page-bar,*/
-.reader.long-strip .reader-page-bar,
-.reader.long-strip .reader-controls-pages {
+.reader[data-renderer="long-strip"] .reader-page-bar,
+.reader[data-renderer="long-strip"] .reader-controls-pages {
   max-height: 0;
   min-height: 0;
   overflow: hidden;
@@ -123,42 +123,39 @@ nav.navbar.hidden + .reader {
 .reader[data-display="fit-both"] .reader-images img {
   max-width: 100%;
 }
-.reader.double-page. .reader-images img {
-  max-width: 50%;
-}
 .reader[data-display="no-resize"] .reader-images img {
   height: auto;
   width: auto;
   max-height: none;
   max-width: none;
 }
-.reader.double-page.direction-ltr .reader-images {
+.reader[data-renderer="double-page"][data-direction="ltr"] .reader-images {
   display: flex;
   flex-direction: row;
 }
-.reader.double-page.direction-rtl .reader-images {
+.reader[data-renderer="double-page"][data-direction="rtl"] .reader-images {
   display: flex;
   flex-direction: row-reverse;
 }
-.reader.single-page .reader-images,
-.reader.double-page .reader-images {
+.reader[data-renderer="single-page"] .reader-images,
+.reader[data-renderer="double-page"] .reader-images {
   cursor: pointer;
 }
-.reader.long-strip .reader-images {
+.reader[data-renderer="long-strip"] .reader-images {
   display: flex;
   flex-direction: column;
 }
-.reader.long-strip[data-display="fit-both"] .reader-images,
-.reader.long-strip[data-display="fit-height"] .reader-images {
+.reader[data-renderer="long-strip"][data-display="fit-both"] .reader-images,
+.reader[data-renderer="long-strip"][data-display="fit-height"] .reader-images {
   height: auto;
 }
-.reader.long-strip[data-display="fit-both"] .reader-images img,
-.reader.long-strip[data-display="fit-height"] .reader-images img {
+.reader[data-renderer="long-strip"][data-display="fit-both"] .reader-images img,
+.reader[data-renderer="long-strip"][data-display="fit-height"] .reader-images img {
   height: auto;
   max-height: calc(100vh - 56px);
 }
-nav.navbar.hidden + .reader.long-strip[data-display="fit-both"] .reader-images img,
-nav.navbar.hidden + .reader.long-strip[data-display="fit-height"] .reader-images img {
+nav.navbar.hidden + .reader[data-renderer="long-strip"][data-display="fit-both"] .reader-images img,
+nav.navbar.hidden + .reader[data-renderer="long-strip"][data-display="fit-height"] .reader-images img {
   max-height: 100vh;
 }
 
@@ -225,12 +222,12 @@ nav.navbar.hidden + .reader.long-strip[data-display="fit-height"] .reader-images
 .reader[data-display="fit-both"] .reader-controls-mode .fit-both,
 .reader[data-display="fit-height"] .reader-controls-mode .fit-height,
 .reader[data-display="fit-width"] .reader-controls-mode .fit-width,
-.reader.direction-ltr .reader-controls-mode .direction-ltr,
-.reader.direction-rtl .reader-controls-mode .direction-rtl,
-.reader.single-page .reader-controls-mode .single-page,
-.reader.double-page .reader-controls-mode .double-page,
-.reader.long-strip:not(.native-long-strip) .reader-controls-mode .long-strip,
-.reader.long-strip.native-long-strip .reader-controls-mode .native-long-strip {
+.reader[data-direction="ltr"] .reader-controls-mode .direction-ltr,
+.reader[data-direction="rtl"] .reader-controls-mode .direction-rtl,
+.reader[data-renderer="single-page"] .reader-controls-mode .single-page,
+.reader[data-renderer="double-page"] .reader-controls-mode .double-page,
+.reader[data-renderer="long-strip"]:not(.native-long-strip) .reader-controls-mode .long-strip,
+.reader[data-renderer="long-strip"].native-long-strip .reader-controls-mode .native-long-strip {
   display: inline;
 }
 

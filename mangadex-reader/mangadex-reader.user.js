@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MangaDex Reader
 // @namespace    Teasday
-// @version      0.4
+// @version      0.4.1
 // @license      GNU GPLv3
 // @description  ｷﾀ━━━━━━(ﾟ∀ﾟ)━━━━━━!!!!!
 // @author       Teasday
@@ -63,7 +63,7 @@
         }
         this.moveToPage(page, false)
         this.pushHistory(this.currentPage, true)
-      }).catch(err => {
+      }).catch((err) => {
         console.error(err)
       })
     }
@@ -78,7 +78,8 @@
         'preloadPages': 3,
         'swipeSensitivity': 3,
         'pageTapTurn': 1,
-        'showDropdownTitles': 1
+        'showDropdownTitles': 1,
+        'hideHeader': 0,
       }
       for (let [key, def] of Object.entries(defaults)) {
         const value = parseInt(localStorage.getItem(`reader.${key}`))
@@ -111,47 +112,43 @@
       this.container.querySelectorAll(`#modal-settings button[data-setting="${key}"]`).forEach(n => { n.classList.toggle('active', n.dataset.value == value) })
       switch(key) {
         case 'direction':
-          this.container.dataset.direction = this.isDirectionLTR ? 'ltr' : 'rtl'
-          this.container.classList.toggle('direction-ltr', this.isDirectionLTR)
-          this.container.classList.toggle('direction-rtl', this.isDirectionRTL)
+          this.setDirection(value)
           this.updateChapterLinks()
           this.setRenderer()
           break
         case 'renderingMode':
-          this.container.dataset.renderer = this.renderer.name
-          this.container.classList.toggle('single-page', this.isSinglePage)
-          this.container.classList.toggle('double-page', this.isDoublePage)
-          this.container.classList.toggle('long-strip',  this.isLongStrip)
-          this.setRenderer()
+          this.setRenderer(value)
           break
         case 'displayFit':
-          this.container.dataset.display = Reader.DISPLAY_FIT_STR[this.settings.displayFit]
-          this.container.classList.toggle('no-resize',  this.isNoResize)
-          this.container.classList.toggle('fit-height', this.isFitHeight)
-          this.container.classList.toggle('fit-width',  this.isFitWidth)
-          this.container.classList.toggle('fit-both',   this.isFitBoth)
+          this.setDisplayFit(value)
           break
         case 'showDropdownTitles':
           this.updateControlsUI()
           break
+        case 'hideHeader':
+          document.querySelector('nav.navbar').classList.toggle('d-none', value)
+          // FIXME: bootstrap 3 legacy
+          document.querySelector('nav.navbar').classList.toggle('hidden', value)
+          document.querySelector('#fullscreen-button').classList.toggle('active', value)
       }
     }
 
     setChapter(id) {
       this.isLoading = true
-      return API.Chapter.create(id).then(chapter => {
+      return API.Chapter.create(id).then((chapter) => {
         this.chapter = chapter
         this.imageCache = {}
         this.currentPage = null
-        if (this.manga.isLongStrip) {
-          this.settings.renderingMode = Reader.RENDERING_MODE.LONG
-        }
-        this.container.classList.toggle('native-long-strip', this.manga.isLongStrip)
         this.chapter.makeMangaChapterList()
         this.updateUI()
+        this.container.classList.toggle('native-long-strip', this.manga.isLongStrip)
+        if (this.manga.isLongStrip) {
+          this.setRenderer(Reader.RENDERING_MODE.LONG)
+          this.setDisplayFit(Reader.DISPLAY_FIT.FIT_WIDTH)
+        }
         this.isLoading = false
         return Promise.resolve()
-      }).catch(err => {
+      }).catch((err) => {
         this.isLoading = false
         this.imageContainer.innerHTML = `<div class="alert alert-danger"><strong><span class='fas fa-exclamation-circle fa-fw' aria-hidden='true' title='Failed'></span> ${err}</strong><br>Try reloading the page.</div>`
         return Promise.reject(err)
@@ -284,7 +281,7 @@
       if (this.renderer != null) {
         this.renderer.destroy()
       }
-      switch(this.settings.renderingMode) {
+      switch(mode) {
         case Reader.RENDERING_MODE.LONG:
           this.renderer = new Renderer.LongStrip(this)
           break
@@ -295,10 +292,26 @@
         default:
           this.renderer = new Renderer.SinglePage(this)
           break
+        case Reader.RENDERING_MODE.ALERT:
+          this.renderer = new Renderer.Alert(this)
+          break
+        case Reader.RENDERING_MODE.RECS:
+          this.renderer = new Renderer.Recommendations(this)
+          break
       }
+      this.currentRenderingMode = mode
+      this.container.dataset.renderer = this.renderer.name
       if (doRender && this.currentPage != null) {
         this.render(this.currentPage)
       }
+    }
+
+    setDirection(direction) {
+      this.container.dataset.direction = Reader.DIRECTION.LTR === direction ? 'ltr' : 'rtl'
+    }
+
+    setDisplayFit(fit) {
+      this.container.dataset.display = Reader.DISPLAY_FIT_STR[fit]
     }
 
     get isLoading() {
@@ -427,13 +440,14 @@
               const recs = Object.values(follows.unreadManga)
               if (recs.length > 0) {
                 this.isLoading = false
-                this.renderer = new Renderer.Recommendations(this)
-                this.renderer.render(recs)
+                this.setRenderer(Reader.RENDERING_MODE.RECS, false)
+                this.render(recs).then(() => {
+                  this.pushHistory('recommendations')
+                })
               } else {
                 this.exitToURL(this.manga.url)
               }
             })
-            // this.exitToURL(this.manga.url)
           }
         })
       } else {
@@ -485,8 +499,9 @@
       const state = {
         page: pg,
         chapter: this.chapter.id,
-        mode: this.settings.renderingMode,
+        mode: this.currentRenderingMode,
       }
+      console.log('push',state)
       const url = this.pageURL(this.chapter.id, pg)
       if (replace) {
         window.history.replaceState(state, null, url)
@@ -499,8 +514,11 @@
       // history
       window.onpopstate = (evt) => {
         if (evt.state != null) {
-          if (this.settings.renderingMode != evt.state.mode) {
+          console.log('pop',evt.state)
+          if (this.settings.renderingMode !== evt.state.mode && evt.state.mode >= 1 && evt.state.mode <= 3) {
             this.saveSetting('renderingMode', evt.state.mode)
+          }
+          if (this.currentRenderingMode != evt.state.mode) {
             this.setRenderer(evt.state.mode, false)
           }
           if (evt.state.chapter == this.chapter.id) {
@@ -570,10 +588,7 @@
         this.container.querySelector('#reader-controls-collapser span').style.transform = isCollapsed ? 'rotateY(180deg)' : null
       })
       this.container.querySelector('#fullscreen-button').addEventListener('click', (evt) => {
-        const hidden = document.querySelector('nav.navbar').classList.toggle('d-none')
-        // FIXME: bootstrap 3 legacy
-        document.querySelector('nav.navbar').classList.toggle('hidden')
-        evt.currentTarget.classList.toggle('active', hidden)
+        this.saveSetting('hideHeader', !this.settings.hideHeader ? 1 : 0)
       })
       this.container.querySelector('#chapter-report-form').addEventListener('submit', (evt) => {
         evt.preventDefault()
@@ -587,22 +602,22 @@
         //   credentials: 'include',
         //   headers: { 'X-Requested-With': 'XMLHttpRequest' }
         // })
-        // .then(res => res.text())
-        // .then(data => {
+        // .then((res) => res.text())
+        // .then((data) => {
         jqFetch({
           url: `/ajax/actions.ajax.php?function=chapter_report&id=${this.chapter.id}`,
           type: 'post',
           data: new FormData(evt.target),
           contentType: false,
           processData: false,
-        }).then(data => {
+        }).then((data) => {
           if (data) {
             alertContainer.innerHTML = data
           } else {
             alertContainer.innerHTML = "<div class='alert alert-success text-center' role='alert'><strong><span class='fas fa-check-circle fa-fw' aria-hidden='true' title='Success'></span> Success:</strong> This chapter has been reported.</div>"
           }
           return Promise.resolve()
-        }).catch(err => {
+        }).catch((err) => {
           alertContainer.innerHTML = "<div class='alert alert-danger text-center' role='alert'>Something weird went wrong. Details in the Console (F12), hopefully.</div>"
           console.error(err)
           return Promise.resolve()
@@ -703,6 +718,8 @@
     SINGLE: 1,
     DOUBLE: 2,
     LONG:   3,
+    ALERT:  4,
+    RECS:   5,
   }
   Reader.DIRECTION = {
     LTR: 1,
