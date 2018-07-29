@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MangaDex Mass Follow Edit
 // @namespace    Teasday
-// @version      0.1
+// @version      0.1.1
 // @description  Edits follows massively
 // @author       Teasday
 // @match        http://beta.mangadex.org/follows/manga/*
@@ -59,14 +59,12 @@
       const total = selected.length
       const type = followSelect.value
       const setFollow = (id) => {
-        // console.log(`/ajax/actions.ajax.php?function=${type == '1' ? 'manga_unfollow' : 'manga_follow'}&id=${id}&type=${type}`)
         fetch(`/ajax/actions.ajax.php?function=${type == '0' ? 'manga_unfollow' : 'manga_follow'}&id=${id}&type=${type}`, {
           credentials: 'include',
           headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
           .then(res => res.text())
           .then(data => {
-            console.log(data)
             submitButton.textContent = `${++done} / ${total} done`
             if (selected.length > 0) {
               setFollow(selected.shift())
