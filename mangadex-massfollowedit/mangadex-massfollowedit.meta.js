@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MangaDex Mass Follow Edit
 // @namespace    Teasday
-// @version      0.1.1
+// @version      0.2
 // @description  Edits follows massively
 // @author       Teasday
 // @match        http://beta.mangadex.org/follows/manga/*

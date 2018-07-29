@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MangaDex Mass Follow Edit
 // @namespace    Teasday
-// @version      0.1.1
+// @version      0.2
 // @description  Edits follows massively
 // @author       Teasday
 // @match        http://beta.mangadex.org/follows/manga/*
@@ -26,7 +26,7 @@
 
   const chapterTable = document.querySelector('#chapters')
   const editRow = chapterTable.insertBefore(create('div'), chapterTable.firstChild)
-  const enterButton = editRow.appendChild(create('button', { textContent: 'Enter mass edit mode (use Simple list!)', classes: ['btn', 'btn-secondary', 'mr-1'] }))
+  const enterButton = editRow.appendChild(create('button', { textContent: 'Enter mass edit mode (use Simple/Expanded list)', classes: ['btn', 'btn-secondary', 'mr-1'] }))
   enterButton.addEventListener('click', evt => {
     enterButton.disabled = true
     const rows = Array.from(document.querySelectorAll('#chapters > div'))
@@ -45,7 +45,7 @@
     editRow.appendChild(create('span', { textContent: 'Set all selected to: ' }))
     const followSelect = editRow.appendChild(create('select', { classes: ['form-control', 'd-inline-block', 'w-auto', 'mr-1'] }))
     followSelect.appendChild(create('option', { textContent: 'Unfollow', value: 0 }))
-    followSelect.appendChild(create('option', { textContent: 'Reading', value: 1 }))
+    followSelect.appendChild(create('option', { textContent: 'Reading', value: 1, selected: true }))
     followSelect.appendChild(create('option', { textContent: 'Completed', value: 2 }))
     followSelect.appendChild(create('option', { textContent: 'On hold', value: 3 }))
     followSelect.appendChild(create('option', { textContent: 'Plan to read', value: 4 }))
@@ -53,27 +53,34 @@
     followSelect.appendChild(create('option', { textContent: 'Re-reading', value: 6 }))
     const submitButton = editRow.appendChild(create('button', { textContent: 'Submit', classes: ['btn', 'btn-success']  }))
     submitButton.addEventListener('click', evt => {
-      submitButton.disabled = true
       const selected = checkboxes.filter(c => c.checked).map(c => c.value)
+      if (selected.length === 0)
+        return
+      submitButton.disabled = true
       let done = 0
       const total = selected.length
       const type = followSelect.value
       const setFollow = (id) => {
+        submitButton.textContent = `${done++} / ${total} done`
         fetch(`/ajax/actions.ajax.php?function=${type == '0' ? 'manga_unfollow' : 'manga_follow'}&id=${id}&type=${type}`, {
           credentials: 'include',
           headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
           .then(res => res.text())
           .then(data => {
-            submitButton.textContent = `${++done} / ${total} done`
             if (selected.length > 0) {
               setFollow(selected.shift())
             } else {
+              submitButton.textContent = 'Reloading, please wait'
               location.reload()
             }
           })
       }
-      setFollow(selected.shift())
+      if (type != '0' || confirm(`Setting ${total} item${total > 1 ? 's' : ''} to ${followSelect.options[type].text}. Are you sure?`)) {
+        setFollow(selected.shift())
+      } else {
+        submitButton.disabled = false
+      }
     })
   }, false)
 
