@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MangaDex Mass Uploader
 // @namespace    Teasday
-// @version      1.3
+// @version      1.4
 // @license      GNU GPLv3
 // @description  Upload en mass
 // @author       Teasday
@@ -33,20 +33,19 @@
   const actions = $('#upload_form > div:last-child').prev()
 
   const panel = $(
-  `<div class="panel panel-default">
-    <div class="panel-heading">
-      <h3 class="panel-title">
-        <span class="fas fa-upload fa-fw" aria-hidden="true" title=""></span> Mass upload
-        <small>v1.3 by Teasday</small>
-      </h3>
-    </div>
-    <div class="panel-body">
+  `<div class="card mb-3">
+    <h6 class="card-header">
+      <span class="fas fa-upload fa-fw" aria-hidden="true" title=""></span> Mass upload
+      <small>v1.3 by Teasday</small>
+    </h6>
+    <div class="card-body">
     </div>
   </div>`)
-  panel.insertBefore($('#content .panel:eq(1)'))
-  const panelBody = panel.find('.panel-body')
+  // panel.insertBefore($('#content .card:eq(1)'))
+  panel.insertBefore($('div[role=main] .card:eq(1)'))
+  const panelBody = panel.find('.card-body')
 
-  const settings = $('<div id="tea-mu-settings" class="form-horizontal">').appendTo(panelBody)
+  const settings = $('<div id="tea-mu-settings">').appendTo(panelBody)
 
   /* CSS */
 
@@ -82,10 +81,12 @@
 
   /* HTML */
 
-  $('<h4>Manga settings</h4>').appendTo(settings)
+  $('<h5 class="col-12">Manga settings</h5>').appendTo(settings)
+  settings.addClass('row')
 
   // Manga
-  $('<label class="col-sm-3 control-label">Manga name</label>').appendTo(settings)
+  // const inputMangaRow = $('<div class="row"></div>').appendTo(settings)
+  $('<label class="col-sm-3 strong text-right">Manga name</label>').appendTo(settings)
   const inputMangaName = $('<input>', {
     type: 'text',
     class: 'form-control',
@@ -98,13 +99,13 @@
   }).appendTo(settings)
 
   // Language
-  $('<label class="col-sm-3 control-label">Language</label>').appendTo(settings)
+  $('<label class="col-sm-3 strong text-right">Language</label>').appendTo(settings)
   langPicker.removeClass('selectpicker').appendTo($('<div class="col-sm-9">').appendTo(settings))
 
-  $('<h4>File settings</h4>').appendTo(settings)
+  $('<h5 class="col-12">File settings</h5>').appendTo(settings)
 
   // Regex
-  $('<label class="col-sm-3 control-label">Volume regex</label>').appendTo(settings)
+  $('<label class="col-sm-3 strong text-right">Volume regex</label>').appendTo(settings)
   const inputRegexVolume = $('<input>', {
     type: 'text',
     class: 'form-control',
@@ -112,7 +113,7 @@
     value: regexDefaultVolume,
   }).appendTo($('<samp class="col-sm-9">').appendTo(settings))
 
-  $('<label class="col-sm-3 control-label">Chapter regex</label>').appendTo(settings)
+  $('<label class="col-sm-3 strong text-right">Chapter regex</label>').appendTo(settings)
   const inputRegexChapter = $('<input>', {
     type: 'text',
     class: 'form-control',
@@ -120,7 +121,7 @@
     value: regexDefaultChapter,
   }).appendTo($('<samp class="col-sm-9">').appendTo(settings))
 
-  $('<label class="col-sm-3 control-label">Group regex</label>').appendTo(settings)
+  $('<label class="col-sm-3 strong text-right">Group regex</label>').appendTo(settings)
   const inputRegexGroup = $('<input>', {
     type: 'text',
     class: 'form-control',
@@ -128,10 +129,10 @@
     value: regexDefaultGroup,
   }).appendTo($('<samp class="col-sm-9">').appendTo(settings))
 
-  $('<h4>Chapter settings</h4>').appendTo(settings)
+  $('<h5 class="col-12">Chapter settings</h5>').appendTo(settings)
 
   // Multi group
-  $('<label class="col-sm-3 control-label">Amount of groups</label>').appendTo(settings)
+  $('<label class="col-sm-3 strong text-right">Amount of groups</label>').appendTo(settings)
   const inputGroupAmount = $('<input>', {
     type: 'number',
     class: 'form-control',
@@ -140,7 +141,7 @@
   }).prependTo($('<div class="col-sm-9"></div>').appendTo(settings))
 
   // Fallbacks
-  $('<label class="col-sm-3 control-label">Group name fallbacks</label>').appendTo(settings)
+  $('<label class="col-sm-3 strong text-right">Group name fallbacks</label>').appendTo(settings)
   const inputGroupFallbacks = $('<textarea>', {
     class: 'form-control',
     style: 'resize:vertical',
@@ -148,17 +149,17 @@
   }).appendTo($('<div class="col-sm-9">').appendTo(settings))
 
   // Chapter titles
-  $('<label class="col-sm-3 control-label">Chapter titles</label>').appendTo(settings)
+  $('<label class="col-sm-3 strong text-right">Chapter titles</label>').appendTo(settings)
   const inputTitles = $('<textarea>', {
     class: 'form-control',
     style: 'resize:vertical',
     placeholder: `1:A Normal Person\n2:Peaceful\n3:Spectre`
   }).appendTo($('<div class="col-sm-9">').appendTo(settings))
 
-  $('<h4>Chapter files</h4>').appendTo(settings)
+  $('<h5 class="col-12">Chapter files</h5>').appendTo(settings)
 
   // Files
-  $('<label class="col-sm-3 control-label">Files</label>').appendTo(settings)
+  $('<label class="col-sm-3 strong text-right">Files</label>').appendTo(settings)
   const inputFiles = $('<input>', {
     type: 'file',
     id: 'mass_files',
@@ -181,7 +182,7 @@
     </table>`).appendTo(panelBody)
   const chapterTbody = $('<tbody>').appendTo(chapterTable)
 
-  const inputUpload = $(`<button type="submit" class="btn btn-default" disabled>
+  const inputUpload = $(`<button type="submit" class="btn btn-secondary" disabled>
       <span class="fas fa-upload fa-fw"></span> Upload
     </button>`).appendTo($('<div class="text-right">').appendTo(panelBody))
 
