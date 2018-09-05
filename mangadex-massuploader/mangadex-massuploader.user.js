@@ -36,7 +36,7 @@
   `<div class="card mb-3">
     <h6 class="card-header">
       <span class="fas fa-upload fa-fw" aria-hidden="true" title=""></span> Mass upload
-      <small>v1.3 by Teasday</small>
+      <small>v1.4 by Teasday</small>
     </h6>
     <div class="card-body">
     </div>
